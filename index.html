@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Page Title</title>
+	</head>
+	<body>
+	
+	</body>
+</html>
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SNAKE PRO</title>
+
+<style>
+* {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+body {
+	background: #07110d;
+	color: white;
+	font-family: Arial, sans-serif;
+	min-height: 100vh;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	padding: 15px;
+}
+
+.game {
+	width: 100%;
+	max-width: 430px;
+	text-align: center;
+}
+
+h1 {
+	color: #39ff88;
+	font-size: 35px;
+	letter-spacing: 4px;
+	margin-bottom: 8px;
+}
+
+.subtitle {
+	color: #82978a;
+	margin-bottom: 25px;
+}
+
+.stats {
+	display: flex;
+	justify-content: space-around;
+	margin-bottom: 15px;
+}
+
+.stat {
+	background: #14251c;
+	padding: 13px 22px;
+	border-radius: 12px;
+	border: 1px solid #245b3b;
+}
+
+.stat span {
+	display: block;
+	color: #39ff88;
+	font-size: 22px;
+	font-weight: bold;
+	margin-top: 5px;
+}
+
+canvas {
+	width: 100%;
+	background: #0b1911;
+	border: 2px solid #39ff88;
+	border-radius: 15px;
+	display: block;
+	touch-action: none;
+}
+
+button {
+	border: none;
+	cursor: pointer;
+	color: white;
+	font-size: 17px;
+	font-weight: bold;
+	border-radius: 12px;
+	padding: 14px 20px;
+}
+
+.start {
+	background: #20d878;
+	color: #062014;
+	width: 100%;
+	margin-top: 18px;
+}
+
+.controls {
+	display: grid;
+	grid-template-columns: repeat(3, 65px);
+	justify-content: center;
+	gap: 9px;
+	margin-top: 22px;
+}
+
+.controls button {
+	background: #193b29;
+	border: 1px solid #39ff88;
+	font-size: 25px;
+	padding: 12px;
+	touch-action: manipulation;
+}
+
+.empty {
+	visibility: hidden;
+}
+
+.actions {
+	display: flex;
+	gap: 10px;
+	margin-top: 15px;
+}
+
+.actions button {
+	flex: 1;
+	background: #193b29;
+	font-size: 14px;
+}
+
+#message {
+	color: #39ff88;
+	margin-top: 15px;
+	min-height: 22px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="game">
+
+<h1>SNAKE PRO</h1>
+<p class="subtitle">THE CLASSIC ARCADE EXPERIENCE</p>
+
+<div class="stats">
+	<div class="stat">
+		SCORE
+		<span id="score">0</span>
+	</div>
+
+	<div class="stat">
+		BEST
+		<span id="best">0</span>
+	</div>
+</div>
+
+<canvas id="board" width="360" height="360"></canvas>
+
+<button class="start" onclick="startGame()">
+	▶ START GAME
+</button>
+
+<div class="actions">
+	<button onclick="pauseGame()">Ⅱ PAUSE</button>
+	<button onclick="startGame()">↻ RESTART</button>
+</div>
+
+<div class="controls">
+	<button class="empty"> </button>
+	<button onclick="changeDirection(0,-1)">⬆️</button>
+	<button class="empty"> </button>
+
+	<button onclick="changeDirection(-1,0)">⬅️</button>
+	<button onclick="changeDirection(0,1)">⬇️</button>
+	<button onclick="changeDirection(1,0)">➡️</button>
+</div>
+
+<p id="message">START tugmasini bosing!</p>
+
+</div>
+
+<script>
+const canvas = document.getElementById("board");
+const ctx = canvas.getContext("2d");
+
+const size = 20;
+const cells = 18;
+
+let snake, food, direction, nextDirection;
+let score = 0;
+let best =0;
+let running = false;
+let paused = false;
+let timer = null;
+let speed = 150;
+
+document.getElementById("best").textContent = best;
+
+function resetGame() {
+	snake = [
+		{x: 8, y: 9},
+		{x: 7, y: 9},
+		{x: 6, y: 9}
+	];
+
+	direction = {x: 1, y: 0};
+	nextDirection = {x: 1, y: 0};
+	score = 0;
+	speed = 150;
+
+	makeFood();
+	updateScore();
+	draw();
+}
+
+function makeFood() {
+	do {
+		food = {
+			x: Math.floor(Math.random() * cells),
+			y: Math.floor(Math.random() * cells)
+		};
+	} while (
+		snake.some(p => p.x === food.x && p.y === food.y)
+	);
+}
+
+function updateScore() {
+	document.getElementById("score").textContent = score;
+	document.getElementById("best").textContent = best;
+}
+
+function startGame() {
+	clearInterval(timer);
+
+	resetGame();
+
+	running = true;
+	paused = false;
+
+	document.getElementById("message").textContent =
+		"Good luck! Collect the apples.";
+
+	timer = setInterval(gameLoop, speed);
+}
+
+function pauseGame() {
+	if (!running) return;
+
+	paused = !paused;
+
+	if (paused) {
+		clearInterval(timer);
+		document.getElementById("message").textContent = "PAUSED";
+	} else {
+		timer = setInterval(gameLoop, speed);
+		document.getElementById("message").textContent = "Game resumed!";
+	}
+}
+
+function changeDirection(x, y) {
+	if (x === -direction.x && y === -direction.y) return;
+
+	nextDirection = {x, y};
+}
+
+function gameLoop() {
+	if (!running || paused) return;
+
+	direction = nextDirection;
+
+	const head = {
+		x: snake[0].x + direction.x,
+		y: snake[0].y + direction.y
+	};
+
+	const eating =
+		head.x === food.x && head.y === food.y;
+
+	const body = eating ? snake : snake.slice(0, -1);
+
+	if (
+		head.x < 0 || head.x >= cells ||
+		head.y < 0 || head.y >= cells ||
+		body.some(p => p.x === head.x && p.y === head.y)
+	) {
+		gameOver();
+		return;
+	}
+
+	snake.unshift(head);
+
+	if (eating) {
+		score += 10;
+
+		if (score > best) {
+			best = score;
+			
+		}
+
+		makeFood();
+		updateScore();
+
+		if (speed > 65) {
+			speed -= 3;
+			clearInterval(timer);
+			timer = setInterval(gameLoop, speed);
+		}
+	} else {
+		snake.pop();
+	}
+
+	draw();
+}
+
+function draw() {
+	ctx.fillStyle = "#0b1911";
+	ctx.fillRect(0, 0, 360, 360);
+
+	// Grid
+	ctx.strokeStyle = "#14281d";
+	ctx.lineWidth = 1;
+
+	for (let i = 0; i <= 360; i += size) {
+		ctx.beginPath();
+		ctx.moveTo(i, 0);
+		ctx.lineTo(i, 360);
+		ctx.stroke();
+
+		ctx.beginPath();
+		ctx.moveTo(0, i);
+		ctx.lineTo(360, i);
+		ctx.stroke();
+	}
+
+	// Food
+	ctx.font = "19px Arial";
+	ctx.textAlign = "center";
+	ctx.fillText(
+		"🍎",
+		food.x * size + 10,
+		food.y * size + 17
+	);
+
+	// Snake
+	snake.forEach((part, index) => {
+		ctx.fillStyle = index === 0 ? "#7dffad" : "#20d878";
+
+		ctx.beginPath();
+		ctx.roundRect(
+			part.x * size + 2,
+			part.y * size + 2,
+			size - 4,
+			size - 4,
+			6
+		);
+		ctx.fill();
+	});
+
+	// Eyes
+	const head = snake[0];
+	ctx.fillStyle = "#07110d";
+
+	let eyeX = head.x * size + 10;
+	let eyeY = head.y * size + 10;
+
+	ctx.beginPath();
+	ctx.arc(eyeX - 4, eyeY - 3, 2, 0, Math.PI * 2);
+	ctx.arc(eyeX + 4, eyeY - 3, 2, 0, Math.PI * 2);
+	ctx.fill();
+}
+
+function gameOver() {
+	clearInterval(timer);
+	running = false;
+
+	document.getElementById("message").textContent =
+		"GAME OVER! Score: " + score;
+
+	draw();
+}
+
+document.addEventListener("keydown", e => {
+	const keys = {
+		ArrowUp: [0,-1],
+		ArrowDown: [0,1],
+		ArrowLeft: [-1,0],
+		ArrowRight: [1,0],
+		w: [0,-1],
+		s: [0,1],
+		a: [-1,0],
+		d: [1,0]
+	};
+
+	if (keys[e.key]) {
+		e.preventDefault();
+		changeDirection(...keys[e.key]);
+	}
+
+	if (e.key === " ") pauseGame();
+});
+
+// Swipe controls
+let touchStartX = 0;
+let touchStartY = 0;
+
+canvas.addEventListener("touchstart", e => {
+	touchStartX = e.changedTouches[0].clientX;
+	touchStartY = e.changedTouches[0].clientY;
+}, {passive: true});
+
+canvas.addEventListener("touchend", e => {
+	const dx = e.changedTouches[0].clientX - touchStartX;
+	const dy = e.changedTouches[0].clientY - touchStartY;
+
+	if (Math.abs(dx) > Math.abs(dy)) {
+		changeDirection(dx > 0 ? 1 : -1, 0);
+	} else if (Math.abs(dx) > 0 || Math.abs(dy) > 0) {
+		changeDirection(0, dy > 0 ? 1 : -1);
+	}
+}, {passive: true});
+
+resetGame();
+</script>
+
+</body>
+</html>
